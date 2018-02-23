@@ -1,2 +1,2 @@
 # SafeNetTokenSigner
-A SignTool alternative that can automatically unlock SafeNet hardware tokens
+A SignTool alternative that can unlock SafeNet hardware tokens without user interaction
