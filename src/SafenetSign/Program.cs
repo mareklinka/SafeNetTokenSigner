@@ -13,25 +13,32 @@ namespace SafenetSign
                 return 10;
             }
 
-            if (args.Length != 6)
+            if (args.Length != 7)
             {
-                Console.WriteLine("usage: signer.exe <certificate thumbprint> <private key container name> <token PIN> <timestamp URL> <mode> <path to file to sign>");
-                Console.WriteLine("mode = (appx|pe)");
+                Console.WriteLine("usage: signer.exe <certificate thumbprint> <private key container name> <target store> <token PIN> <timestamp URL> <storeString> <path to file to sign>");
+                Console.WriteLine("storeString = (appx|pe)");
+                Console.WriteLine("target store = (user|machine)");
 
                 return 1;
             }
 
-            var certHash = args[0];
-            var containerName = args[1];
-            var tokenPin = args[2];
-            var timestampUrl = args[3];
-            var mode = args[4];
-            var fileToSign = args[5];
+            int index = 0;
+
+            var certHash = args[index++];
+            var containerName = args[index++];
+            var targetStore = args[index++];
+            var tokenPin = args[index++];
+            var timestampUrl = args[index++];
+            var mode = args[index++];
+            var fileToSign = args[index++];
 
             try
             {
-                CodeSigner.SignFile(certHash, tokenPin, containerName, fileToSign, timestampUrl,
-                       mode.Equals("pe", StringComparison.OrdinalIgnoreCase) ? SignMode.PE : SignMode.APPX);
+                var signMode = ParseMode(mode);
+                var store = ParseStore(targetStore);
+
+                CodeSigner.SignFile(certHash, tokenPin, containerName, store, fileToSign, timestampUrl,
+                    signMode);
 
                 return 0;
             }
@@ -42,6 +49,42 @@ namespace SafenetSign
 
                 return 2;
             }
+        }
+
+        private static CertificateStore ParseStore(string storeString)
+        {
+            CertificateStore store;
+            switch (storeString.ToLowerInvariant())
+            {
+                case "user":
+                    store = CertificateStore.User;
+                    break;
+                case "machine":
+                    store = CertificateStore.Machine;
+                    break;
+                default:
+                    throw new SigningException($"Unknown store specified: {storeString}");
+            }
+
+            return store;
+        }
+
+        private static SignMode ParseMode(string mode)
+        {
+            SignMode signMode;
+            switch (mode.ToLowerInvariant())
+            {
+                case "pe":
+                    signMode = SignMode.PE;
+                    break;
+                case "appx":
+                    signMode = SignMode.APPX;
+                    break;
+                default:
+                    throw new SigningException($"Unknown storeString specified: {mode}");
+            }
+
+            return signMode;
         }
     }
 }

@@ -10,6 +10,7 @@
         public const uint DONT_CARE = 0;
 
         public const uint CERT_SYSTEM_STORE_CURRENT_USER = 1 << 16;
+        public const uint CERT_SYSTEM_STORE_LOCAL_MACHINE = 2 << 16;
 
         public const int MY_ENCODING_TYPE = 0x00010000 | 0x00000001;
         public const int CERT_FIND_SHA1_HASH = 1 << 16;

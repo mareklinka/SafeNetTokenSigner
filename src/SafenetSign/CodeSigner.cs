@@ -8,7 +8,7 @@ namespace SafenetSign
 {
     public static class CodeSigner
     {
-        public static void SignFile(string certificateThumbprint, string pin, string containerName, string path, string timestampUrl, SignMode mode)
+        public static void SignFile(string certificateThumbprint, string pin, string containerName, CertificateStore store, string path, string timestampUrl, SignMode mode)
         {
             if (certificateThumbprint?.Length != 40 || !ValidateThumbprint(certificateThumbprint))
             {
@@ -19,9 +19,10 @@ namespace SafenetSign
             var binaryHash = StringToByteArray(certificateThumbprint);
 
             UnlockToken(containerName, Constants.CryptoProviderName, pin);
+            var systemStore = GetSystemStore(store);
 
             var certStore = NativeMethods.CertOpenStore(new IntPtr(Constants.CERT_STORE_PROV_SYSTEM),
-                Constants.DONT_CARE, IntPtr.Zero, Constants.CERT_SYSTEM_STORE_CURRENT_USER, Constants.CryptoStoreName);
+                Constants.DONT_CARE, IntPtr.Zero, systemStore, Constants.CryptoStoreName);
 
             if (certStore == IntPtr.Zero)
             {
@@ -41,6 +42,24 @@ namespace SafenetSign
                 h1?.Free();
                 h2?.Free();
             }
+        }
+
+        private static uint GetSystemStore(CertificateStore store)
+        {
+            uint storeToUse;
+            switch (store)
+            {
+                case CertificateStore.User:
+                    storeToUse = Constants.CERT_SYSTEM_STORE_CURRENT_USER;
+                    break;
+                case CertificateStore.Machine:
+                    storeToUse = Constants.CERT_SYSTEM_STORE_LOCAL_MACHINE;
+                    break;
+                default:
+                    throw new SigningException($"Unknown {nameof(CertificateStore)} value encountered: {store}");
+            }
+
+            return storeToUse;
         }
 
         private static bool ValidateThumbprint(string certificateThumbprint)
