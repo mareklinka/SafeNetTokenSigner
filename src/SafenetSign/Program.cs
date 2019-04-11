@@ -7,9 +7,9 @@ namespace SafenetSign
     {
         static int Main(string[] args)
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.OSArchitecture != Architecture.X64 || !RuntimeInformation.OSDescription.Contains("10."))
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.OSArchitecture != Architecture.X64)
             {
-                Console.Error.WriteLine("This tool only supports Windows 10 x64");
+                Console.Error.WriteLine("This tool only supports x64 Windows");
                 return 10;
             }
 
