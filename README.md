@@ -1,3 +1,5 @@
+[![Build status](https://dev.azure.com/mar3ek/safenet-signer/_apis/build/status/safenet-signer-CI)](https://dev.azure.com/mar3ek/safenet-signer/_build/latest?definitionId=13)
+
 # SafeNetTokenSigner
 A SignTool alternative that can unlock SafeNet hardware tokens without user interaction
 
