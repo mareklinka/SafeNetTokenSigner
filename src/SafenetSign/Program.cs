@@ -15,7 +15,7 @@ namespace SafenetSign
 
             if (args.Length != 7)
             {
-                Console.WriteLine("usage: signer.exe <certificate thumbprint> <private key container name> <target store> <token PIN> <timestamp URL> <storeString> <path to file to sign>");
+                Console.WriteLine("usage: signer.exe <certificate thumbprint> <private key container name> <target store> <token PIN> <timestamp URL> <path to file to sign>");
                 Console.WriteLine("storeString = (appx|pe)");
                 Console.WriteLine("target store = (user|machine)");
 
