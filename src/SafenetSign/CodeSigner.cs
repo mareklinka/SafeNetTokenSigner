@@ -8,34 +8,39 @@ namespace SafenetSign
 {
     public static class CodeSigner
     {
-        public static void SignFile(string certificateThumbprint, string pin, string containerName, CertificateStore store, string path, string timestampUrl, SignMode mode)
+        public static void SignFile(string certificateThumbprint, string pin, string containerName,
+            CertificateStore store, string path, string timestampUrl, SignMode mode, Action<string> logger)
         {
+            logger("Validating certificate thumbprint");
             if (certificateThumbprint?.Length != 40 || !ValidateThumbprint(certificateThumbprint))
             {
                 throw new SigningException(
                     $"Invalid certificate thumbprint provided: {certificateThumbprint}. The thumbprint must be a valid SHA1 thumbprint - 40 characters long and consisting of only hexadecimal characters (0-9 and A-F)");
             }
 
+            logger("Converting thumbprint to bytes");
             var binaryHash = StringToByteArray(certificateThumbprint);
 
-            UnlockToken(containerName, Constants.CryptoProviderName, pin);
+            UnlockToken(containerName, Constants.CryptoProviderName, pin, logger);
             var systemStore = GetSystemStore(store);
 
+            logger($"Opening system-level cryptographic store {systemStore}/{Constants.CryptoStoreName}");
             var certStore = NativeMethods.CertOpenStore(new IntPtr(Constants.CERT_STORE_PROV_SYSTEM),
                 Constants.DONT_CARE, IntPtr.Zero, systemStore, Constants.CryptoStoreName);
 
             if (certStore == IntPtr.Zero)
             {
                 var errorResult = Marshal.GetHRForLastWin32Error();
-                throw new SigningException($"Win32 error in CertOpenStore: {errorResult}", Marshal.GetExceptionForHR(errorResult));
+                throw new SigningException($"Win32 error in CertOpenStore: {errorResult}",
+                    Marshal.GetExceptionForHR(errorResult));
             }
 
             GCHandle? h1 = null;
             GCHandle? h2 = null;
             try
             {
-                var certificate = RetrieveCertificate(binaryHash, certStore, out h1, out h2);
-                SignFile(certificate, path, timestampUrl, mode);
+                var certificate = RetrieveCertificate(binaryHash, certStore, out h1, out h2, logger);
+                SignFile(certificate, path, timestampUrl, mode, logger);
             }
             finally
             {
@@ -75,8 +80,9 @@ namespace SafenetSign
                 .ToArray();
         }
 
-        private static IntPtr RetrieveCertificate(byte[] binaryHash, IntPtr certStore, out GCHandle? h1, out GCHandle? h2)
+        private static IntPtr RetrieveCertificate(byte[] binaryHash, IntPtr certStore, out GCHandle? h1, out GCHandle? h2, Action<string> logger)
         {
+            logger("Retrieving certificate from the store");
             h1 = GCHandle.Alloc(binaryHash, GCHandleType.Pinned);
 
             var blob = new CRYPTOAPI_BLOB { cbData = binaryHash.Length, pbData = h1.Value.AddrOfPinnedObject() };
@@ -95,8 +101,9 @@ namespace SafenetSign
             return certificate;
         }
 
-        private static void SignFile(IntPtr certificate, string path, string timestampUrl, SignMode type)
+        private static void SignFile(IntPtr certificate, string path, string timestampUrl, SignMode type, Action<string> logger)
         {
+            logger("Beginning the signing process");
             var subjectInfo = GetSubjectInfoPointer(path);
             var signerCertificate = GetSignerCertificatePointer(certificate);
 
@@ -105,6 +112,7 @@ namespace SafenetSign
             {
                 var signerSignEx2Params = GetsignersignEx2ParametersPointer(timestampUrl, type, subjectInfo, signerCertificate, out signerSignHandle);
 
+                logger("Loading MSSign32.dll");
                 var signModule = NativeMethods.LoadLibraryEx("MSSign32.dll", IntPtr.Zero, LoadLibraryFlags.LOAD_LIBRARY_SEARCH_SYSTEM32);
 
                 if (signModule == IntPtr.Zero)
@@ -113,6 +121,7 @@ namespace SafenetSign
                     throw new SigningException($"Win32 error in LoadLibraryEx: {errorResult}", Marshal.GetExceptionForHR(errorResult));
                 }
 
+                logger("Getting SignerSignEx2 pointer");
                 var signerSignEx2Pointer = NativeMethods.GetProcAddress(signModule, "SignerSignEx2");
 
                 if (signModule == IntPtr.Zero)
@@ -125,6 +134,7 @@ namespace SafenetSign
 
                 try
                 {
+                    logger("Marshalling SignerSignEx2 pointer to a delegate");
                     signerSignEx2 = Marshal.GetDelegateForFunctionPointer<NativeMethods.SignerSignEx2Delegate>(
                         signerSignEx2Pointer);
                 }
@@ -133,6 +143,7 @@ namespace SafenetSign
                     throw new SigningException("Error while marshalling SignerSignEx2 pointer to a managed delegate.", e);
                 }
 
+                logger("Invoking SignerSignEx2");
                 var result = signerSignEx2(signerSignEx2Params.dwFlags, signerSignEx2Params.pSubjectInfo,
                     signerSignEx2Params.pSigningCert,
                     signerSignEx2Params.pSignatureInfo,
@@ -150,6 +161,8 @@ namespace SafenetSign
                 {
                     throw new SigningException($"Win32 error in SignerSignEx2:", Marshal.GetExceptionForHR(result));
                 }
+
+                logger("DONE");
             }
             finally
             {
@@ -257,10 +270,11 @@ namespace SafenetSign
             return subjectHandle;
         }
 
-        private static void UnlockToken(string containerName, string providerName, string tokenPin)
+        private static void UnlockToken(string containerName, string providerName, string tokenPin, Action<string> logger)
         {
             var cryptoProvider = new IntPtr();
 
+            logger("Acquiring cryptographic context");
             if (!NativeMethods.CryptAcquireContext(ref cryptoProvider, containerName,
                 providerName, Constants.PROV_RSA_FULL, Constants.CRYPT_SILENT))
             {
@@ -268,6 +282,7 @@ namespace SafenetSign
                 throw new SigningException($"Win32 error in CryptAcquireContext: {errorResult}", Marshal.GetExceptionForHR(errorResult));
             }
 
+            logger("Setting PIN");
             if (!NativeMethods.CryptSetProvParam(cryptoProvider, Constants.PP_SIGNATURE_PIN,
                 System.Text.Encoding.UTF8.GetBytes(tokenPin), Constants.DONT_CARE))
             {

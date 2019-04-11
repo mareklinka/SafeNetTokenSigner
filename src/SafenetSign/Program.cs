@@ -38,7 +38,7 @@ namespace SafenetSign
                 var store = ParseStore(targetStore);
 
                 CodeSigner.SignFile(certHash, tokenPin, containerName, store, fileToSign, timestampUrl,
-                    signMode);
+                    signMode, Console.WriteLine);
 
                 return 0;
             }
