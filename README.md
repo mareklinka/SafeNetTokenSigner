@@ -43,11 +43,30 @@ We are doing four things here:
 And that's it! This requires zero user interaction and can be used without an interactive session within a TFS CI build, given the USB token is plugged into the build agent machine and the correct command line arguments are passed.
 
 ## Usage
-If you want to use this, feel free to compile the exe from source. The command line arguments of the app look like this:
+There are currently two variants of the tools available:
+1. Native C++ version (this is the original code)
+2. .NET Core version (shiny and new, with much better error handling)
 
-`signer.exe <thumbprint> <container name> <PIN> <timestamp URL> <mode> <path>`
+### Compiling and using the C++ version
+If you want to have the smalled executable with no dependencies, use this version. Just checkout/fork/download the solution, compile it with Visual Studio 2017+, and you are ready to go - you have the `signer.exe` executable. For command line options, see below.
 
-Arguments:
+### Using the .NET version
+**IMPORTANT: The tools only works on Windows 10 x64 even though it's a .NET Core app**
+
+You can download the binaries for the tool from the the [releases](https://github.com/mareklinka/SafeNetTokenSigner/releases/latest) page here on GitHub. You will need to have the .NET Core 2.2 runtime installed to run the tool.
+
+Alternatively, I plan to release the tool as a dotnet tool so eventually it should be possible to use the `dotnet tool install` syntax (working on it!).
+
+*The advantages of this version is that it has much better error reporting capabilities, so no more `Signing failed with error code 0` and similar cryptic errors.*
+
+For command line options, see below.
+
+### Compiling the .NET version
+The tool is written as a .NET Core 2.2 console app and has no other dependencies (other than the OS APIs). You can checkout the solution and open the `src/SafenetSign/SafenetSign.csproj` project. The code is small and not very well documented but I plan on improving that over time.
+
+### Comand line options
+To use the tool, you need to provide the following:
+
 * the signing certificate thumbprint (SHA1, e.g. `8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb`)
 * private key container name - you can get this by looking into the SafeNet app (see the first SO question)
 * the PIN used to protect the token's private keys
@@ -55,8 +74,32 @@ Arguments:
 * mode is either `pe` or `appx`, depending on what file you are trying to sign (`pe` for normal EXE/DLL etc.)
 * the path to the file you want to sign (can be relative)
 
+Schema:
+
+`<executable> <thumbprint> <container name> <PIN> <timestamp URL> <mode> <path>`
+
+Examples:
+
+C++
+
+`signer.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+
+.NET Core - binaries or self-compiled
+
+`safenetsign.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+
+.NET Core - dotnet tool (not working yet, for future use)
+
+`safenet-sign 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+
+
+Arguments:
+
+
 ## Limitations
 This code is provided without any guuarantees (well, duh!). I tested it on our project and it seems to be performing according to expectations. Tested on Windows 10, signing a PE EXE and a Visual Studio-produced UWP appxbundle.
+
+If you find any issues that you'd like to see fixed, report them, I'll be glad to take a look.
 
 ## Thanks where it's due
 It was only possible to create this tool because of SO users [draketb](https://stackoverflow.com/users/1751253/draketb) and [RbMm](https://stackoverflow.com/users/6401656/rbmm) (and others). So big thanks to them and the whole SO community!
