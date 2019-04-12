@@ -40,7 +40,7 @@ namespace SafenetSign
             try
             {
                 var certificate = RetrieveCertificate(binaryHash, certStore, out h1, out h2, logger);
-                SignFile(certificate, path, timestampUrl, mode, logger);
+                SignFile(certificate, path, timestampUrl, mode, containerName, logger);
             }
             finally
             {
@@ -101,16 +101,17 @@ namespace SafenetSign
             return certificate;
         }
 
-        private static void SignFile(IntPtr certificate, string path, string timestampUrl, SignMode type, Action<string> logger)
+        private static void SignFile(IntPtr certificate, string path, string timestampUrl, SignMode type, string containerName, Action<string> logger)
         {
             logger("Beginning the signing process");
             var subjectInfo = GetSubjectInfoPointer(path);
             var signerCertificate = GetSignerCertificatePointer(certificate);
+            var provider = GetProviderPointer(containerName);
 
             GCHandle? signerSignHandle = null;
             try
             {
-                var signerSignEx2Params = GetsignersignEx2ParametersPointer(timestampUrl, type, subjectInfo, signerCertificate, out signerSignHandle);
+                var signerSignEx2Params = GetsignersignEx2ParametersPointer(timestampUrl, type, subjectInfo, signerCertificate, provider, out signerSignHandle);
 
                 logger("Loading MSSign32.dll");
                 var signModule = NativeMethods.LoadLibraryEx("MSSign32.dll", IntPtr.Zero, LoadLibraryFlags.LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -170,8 +171,28 @@ namespace SafenetSign
             }
         }
 
+        private static IntPtr GetProviderPointer(string containerName)
+        {
+            var providerInfo = new SIGNER_PROVIDER_INFO
+            {
+                cbSize = (uint) Marshal.SizeOf<SIGNER_PROVIDER_INFO>(),
+                pwszProviderName = Marshal.StringToHGlobalUni(Constants.CryptoProviderName),
+                dwProviderType = Constants.PROV_RSA_FULL,
+                dwPvkChoice = Constants.PVK_TYPE_KEYCONTAINER,
+                PvkChoice = new SIGNER_PROVIDER_INFO.PvkChoiceUnion
+                {
+                    pwszKeyContainer = Marshal.StringToHGlobalUni(containerName)
+                }
+            };
+
+            var providerHandle = Marshal.AllocHGlobal(Marshal.SizeOf<SIGNER_PROVIDER_INFO>());
+            Marshal.StructureToPtr(providerInfo, providerHandle, false);
+
+            return providerHandle;
+        }
+
         private static SIGNER_SIGN_EX2_PARAMS GetsignersignEx2ParametersPointer(string timestampUrl, SignMode type,
-            IntPtr subjectInfo, IntPtr signerCertificate, out GCHandle? signerSignHandle)
+            IntPtr subjectInfo, IntPtr signerCertificate, IntPtr provider, out GCHandle? signerSignHandle)
         {
             // signature info
             var signatureInfo = new SIGNER_SIGNATURE_INFO
@@ -194,6 +215,7 @@ namespace SafenetSign
                 pSubjectInfo = subjectInfo,
                 pSigningCert = signerCertificate,
                 pSignatureInfo = signatureHandle,
+                pProviderInfo = provider,
                 dwTimestampFlags = Constants.SIGNER_TIMESTAMP_AUTHENTICODE,
                 pwszTimestampURL = Marshal.StringToHGlobalUni(timestampUrl)
             };

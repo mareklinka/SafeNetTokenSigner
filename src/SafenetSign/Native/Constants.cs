@@ -2,6 +2,8 @@
 {
     public static class Constants
     {
+        public const uint PVK_TYPE_KEYCONTAINER = 2;
+
         public const uint PROV_RSA_FULL = 1;
         public const int CRYPT_SILENT = 0x00000040;
 
