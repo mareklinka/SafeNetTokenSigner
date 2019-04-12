@@ -159,7 +159,7 @@ namespace SafenetSign
 
                 if (result != 0)
                 {
-                    throw new SigningException($"Win32 error in SignerSignEx2:", Marshal.GetExceptionForHR(result));
+                    throw new SigningException("Win32 error in SignerSignEx2:", Marshal.GetExceptionForHR(result));
                 }
 
                 logger("DONE");
