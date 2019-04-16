@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
+using Args;
 
 namespace SafenetSign
 {
@@ -13,32 +16,25 @@ namespace SafenetSign
                 return 10;
             }
 
-            if (args.Length != 7)
+            var argumentModel = Configuration.Configure<CommandParameters>();
+
+            CommandParameters command;
+            try
             {
-                Console.WriteLine("usage: signer.exe <certificate thumbprint> <private key container name> <target store> <token PIN> <timestamp URL> <path to file to sign>");
-                Console.WriteLine("storeString = (appx|pe)");
-                Console.WriteLine("target store = (user|machine)");
+                command = argumentModel.CreateAndBind(args);
+            }
+            catch (Exception)
+            {
+                PrintHelp(argumentModel);
 
                 return 1;
             }
 
-            int index = 0;
-
-            var certHash = args[index++];
-            var containerName = args[index++];
-            var targetStore = args[index++];
-            var tokenPin = args[index++];
-            var timestampUrl = args[index++];
-            var mode = args[index++];
-            var fileToSign = args[index++];
-
             try
             {
-                var signMode = ParseMode(mode);
-                var store = ParseStore(targetStore);
-
-                CodeSigner.SignFile(certHash, tokenPin, containerName, store, fileToSign, timestampUrl,
-                    signMode, Console.WriteLine);
+                CodeSigner.SignFile(command.Thumbprint, command.Pin, command.PrivateKeyContainer, command.Store,
+                    command.Path, command.TimestampUrl,
+                    command.Mode, Console.WriteLine);
 
                 return 0;
             }
@@ -51,40 +47,56 @@ namespace SafenetSign
             }
         }
 
-        private static CertificateStore ParseStore(string storeString)
+        private static void PrintHelp(IModelBindingDefinition<CommandParameters> argumentModel)
         {
-            CertificateStore store;
-            switch (storeString.ToLowerInvariant())
+            Console.WriteLine("Invalid command line arguments specified.");
+            Console.WriteLine();
+
+            var arguments = string.Join(" ", argumentModel.Members.Select(_ => $"<{_.MemberInfo.Name}>"));
+            Console.WriteLine($"Usage: {arguments}");
+            Console.WriteLine();
+
+            var list = new List<string[]> { new[] { "Argument", "Description", "Is required", "Default value" } };
+
+            foreach (var member in argumentModel.Members)
             {
-                case "user":
-                    store = CertificateStore.User;
-                    break;
-                case "machine":
-                    store = CertificateStore.Machine;
-                    break;
-                default:
-                    throw new SigningException($"Unknown store specified: {storeString}");
+                list.Add(new[]
+                {
+                    member.MemberInfo.Name, member.HelpText, member.Required.ToString(),
+                    member.DefaultValue?.ToString() ?? string.Empty
+                });
             }
 
-            return store;
+            var lengths = Enumerable.Range(0, list[0].Length).Select(_ => list.Max(a => a[_].Length)).ToList();
+
+            var rowWidth = lengths.Sum() + list[0].Length * 3 + 1;
+
+            PrintRowSeparator(rowWidth);
+            PrintHelpRow(list[0], lengths);
+            PrintRowSeparator(rowWidth);
+
+            foreach (var row in list.Skip(1))
+            {
+                PrintHelpRow(row, lengths);
+            }
+
+            PrintRowSeparator(rowWidth);
         }
 
-        private static SignMode ParseMode(string mode)
+        private static void PrintRowSeparator(int rowWidth)
         {
-            SignMode signMode;
-            switch (mode.ToLowerInvariant())
+            Console.WriteLine(new string('-', rowWidth));
+        }
+
+        private static void PrintHelpRow(string[] row, List<int> lengths)
+        {
+            for (var index = 0; index < row.Length; index++)
             {
-                case "pe":
-                    signMode = SignMode.PE;
-                    break;
-                case "appx":
-                    signMode = SignMode.APPX;
-                    break;
-                default:
-                    throw new SigningException($"Unknown storeString specified: {mode}");
+                var s = row[index];
+                Console.Write($"| {s.PadRight(lengths[index])} ");
             }
 
-            return signMode;
+            Console.WriteLine("|");
         }
     }
 }
