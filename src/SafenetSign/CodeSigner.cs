@@ -21,7 +21,40 @@ namespace SafenetSign
             logger("Converting thumbprint to bytes");
             var binaryHash = StringToByteArray(certificateThumbprint);
 
-            UnlockToken(containerName, Constants.CryptoProviderName, pin, logger);
+            var cryptoProvider = AcquireContext(containerName, Constants.CryptoProviderName, logger);
+            try
+            {
+                SetPin(cryptoProvider, pin, logger);
+
+                var certStore = OpenCertificateStore(store, logger);
+                try
+                {
+                    var certificate = RetrieveCertificate(binaryHash, certStore, out var h1, out var h2, logger);
+
+                    try
+                    {
+                        SignFile(certificate, path, timestampUrl, mode, containerName, logger);
+                    }
+                    finally
+                    {
+                        h1?.Free();
+                        h2?.Free();
+                        NativeMethods.CertFreeCertificateContext(certificate);
+                    }
+                }
+                finally
+                {
+                    NativeMethods.CertCloseStore(certStore, 0);
+                }
+            }
+            finally
+            {
+                ReleaseContext(cryptoProvider);
+            }
+        }
+
+        private static IntPtr OpenCertificateStore(CertificateStore store, Action<string> logger)
+        {
             var systemStore = GetSystemStore(store);
 
             logger($"Opening system-level cryptographic store {systemStore}/{Constants.CryptoStoreName}");
@@ -35,18 +68,7 @@ namespace SafenetSign
                     Marshal.GetExceptionForHR(errorResult));
             }
 
-            GCHandle? h1 = null;
-            GCHandle? h2 = null;
-            try
-            {
-                var certificate = RetrieveCertificate(binaryHash, certStore, out h1, out h2, logger);
-                SignFile(certificate, path, timestampUrl, mode, containerName, logger);
-            }
-            finally
-            {
-                h1?.Free();
-                h2?.Free();
-            }
+            return certStore;
         }
 
         private static uint GetSystemStore(CertificateStore store)
@@ -292,7 +314,7 @@ namespace SafenetSign
             return subjectHandle;
         }
 
-        private static void UnlockToken(string containerName, string providerName, string tokenPin, Action<string> logger)
+        private static IntPtr AcquireContext(string containerName, string providerName, Action<string> logger)
         {
             var cryptoProvider = new IntPtr();
 
@@ -304,13 +326,23 @@ namespace SafenetSign
                 throw new SigningException($"Win32 error in CryptAcquireContext: {errorResult}", Marshal.GetExceptionForHR(errorResult));
             }
 
+            return cryptoProvider;
+        }
+
+        private static void SetPin(IntPtr providerHandle, string tokenPin, Action<string> logger)
+        {
             logger("Setting PIN");
-            if (!NativeMethods.CryptSetProvParam(cryptoProvider, Constants.PP_SIGNATURE_PIN,
+            if (!NativeMethods.CryptSetProvParam(providerHandle, Constants.PP_SIGNATURE_PIN,
                 System.Text.Encoding.UTF8.GetBytes(tokenPin), Constants.DONT_CARE))
             {
                 var errorResult = Marshal.GetHRForLastWin32Error();
                 throw new SigningException($"Win32 error in CryptSetProvParam: {errorResult}", Marshal.GetExceptionForHR(errorResult));
             }
+        }
+
+        private static void ReleaseContext(IntPtr providerHandle)
+        {
+            NativeMethods.CryptReleaseContext(providerHandle, 0);
         }
     }
 }

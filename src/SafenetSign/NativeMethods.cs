@@ -15,6 +15,11 @@ namespace SafenetSign
             uint dwProvType, 
             uint dwFlags);
 
+        [DllImport("Advapi32.dll", EntryPoint = "CryptReleaseContext", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern bool CryptReleaseContext(
+            IntPtr hProv,
+            uint dwFlags);
+
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CryptSetProvParam(
@@ -31,6 +36,10 @@ namespace SafenetSign
             uint dwFlags,
             string pvPara);
 
+        [DllImport("CRYPT32.DLL", EntryPoint = "CertCloseStore", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CertCloseStore(IntPtr storeProvider, uint flags);
+
         [DllImport("crypt32.dll", SetLastError = true)]
         public static extern IntPtr CertFindCertificateInStore(
             IntPtr hCertStore,
@@ -39,6 +48,9 @@ namespace SafenetSign
             uint dwFindType,
             IntPtr pszFindPara, 
             IntPtr pPrevCertCntxt);
+
+        [DllImport("crypt32.dll")]
+        public static extern bool CertFreeCertificateContext(IntPtr pCertContext);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr LoadLibraryEx(
