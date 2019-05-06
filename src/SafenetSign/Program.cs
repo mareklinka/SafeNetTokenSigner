@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Args;
@@ -22,6 +23,13 @@ namespace SafenetSign
             try
             {
                 command = argumentModel.CreateAndBind(args);
+
+                if (!string.IsNullOrEmpty(command.MsSign32Path) && !Path.IsPathRooted(command.MsSign32Path))
+                {
+                    // https://docs.microsoft.com/en-us/windows/desktop/api/libloaderapi/nf-libloaderapi-loadlibraryexa#searching-for-dlls-and-dependencies
+                    Console.Error.WriteLine("Specifying a relative path for the MSSign32.dll is not supported");
+                    return 9;
+                }
             }
             catch (Exception)
             {
@@ -34,7 +42,7 @@ namespace SafenetSign
             {
                 CodeSigner.SignFile(command.Thumbprint, command.Pin, command.PrivateKeyContainer, command.Store,
                     command.Path, command.TimestampUrl,
-                    command.Mode, Console.WriteLine);
+                    command.Mode, command.MsSign32Path, new Logger(command.IsVerboseLoggingEnabled));
 
                 return 0;
             }

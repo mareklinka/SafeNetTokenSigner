@@ -43,5 +43,13 @@ namespace SafenetSign
         [Required]
         [Description("The path to the file to sign")]
         public string Path { get; set; }
+
+        [ArgsMemberSwitch("m")]
+        [Description("The path to the MSSign32.dll library")]
+        public string MsSign32Path { get; set; }
+
+        [ArgsMemberSwitch("v")]
+        [Description("Whether to enable verbose logging")]
+        public bool IsVerboseLoggingEnabled { get; set; }
     }
 }
