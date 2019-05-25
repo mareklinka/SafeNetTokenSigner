@@ -55,7 +55,7 @@ If you want to have the smalled executable with no dependencies, use this versio
 
 You can download the binaries for the tool from the the [releases](https://github.com/mareklinka/SafeNetTokenSigner/releases/latest) page here on GitHub. You will need to have the .NET Core 2.2 runtime installed to run the tool.
 
-Alternatively, I plan to release the tool as a dotnet tool so eventually it should be possible to use the `dotnet tool install` syntax (working on it!).
+Alternatively, you can install the tool as a "dotnet tool": https://www.nuget.org/packages/SafenetSign
 
 *The advantages of this version is that it has much better error reporting capabilities, so no more `Signing failed with error code 0` and similar cryptic errors.*
 
@@ -69,6 +69,7 @@ To use the tool, you need to provide the following:
 
 * the signing certificate thumbprint (SHA1, e.g. `8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb`)
 * private key container name - you can get this by looking into the SafeNet app (see the first SO question)
+* the target store that contains the certificate (valid values are `user` and `machine`)
 * the PIN used to protect the token's private keys
 * timestamp URL (the code will perform timestamping automatically, e.g. `http://timestamp.verisign.com/scripts/timstamp.dll`)
 * mode is either `pe` or `appx`, depending on what file you are trying to sign (`pe` for normal EXE/DLL etc.)
@@ -76,21 +77,21 @@ To use the tool, you need to provide the following:
 
 Schema:
 
-`<executable> <thumbprint> <container name> <PIN> <timestamp URL> <mode> <path>`
+`<executable> <cert thumbprint> <private key container name> <target store> <token PIN> <timestamp URL> <mode> <path to file to sign>`
 
 Examples:
 
 C++
 
-`signer.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+`signer.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name user 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
 
 .NET Core - binaries or self-compiled
 
-`safenetsign.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+`safenetsign.exe 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 user http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
 
 .NET Core - dotnet tool (not working yet, for future use)
 
-`safenet-sign 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
+`safenet-sign 8cfaa82e5c3842ffee22d82d8ff812b3a1de1ebb my-container-name 12345678 user http://timestamp.verisign.com/scripts/timstamp.dll pe Thing.exe`
 
 
 Arguments:
