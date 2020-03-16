@@ -1,3 +1,9 @@
+# Update March 16, 2020
+
+This project is no longer maintained. Instead, you can use a sign-tool compatible approach detailed in [this issue](https://github.com/mareklinka/SafeNetTokenSigner/issues/8).
+
+----
+
 [![Build status](https://dev.azure.com/mar3ek/safenet-signer/_apis/build/status/safenet-signer-CI)](https://dev.azure.com/mar3ek/safenet-signer/_build/latest?definitionId=13)
 
 # SafeNetTokenSigner
